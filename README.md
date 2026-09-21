@@ -72,7 +72,30 @@ mkl-static` or `pip install mkl-static` - then build with `--no-build-isolation`
 `pip install --no-build-isolation --no-deps -Csetup-args=-Dmkl-link=static .`
 
 The prebuilt wheels on PyPI (see `.github/workflows/wheels.yml`) are built this way with
-`iomp` threading: `cibuildwheel`'s default repair step (`auditwheel`/`delvewheel`) bundles
-the resulting `libiomp5` dependency into the wheel automatically, the same way it would
-bundle e.g. OpenBLAS, so those wheels end up with no separate runtime MKL dependency either
-while still solving with multiple threads.
+`iomp` threading, using LLVM's OpenMP runtime in place of Intel's `libiomp5` (which is under
+a different Intel license; LLVM's exports the same interface, and `.github/install_llvm_openmp.py`
+puts it where MKL's CMake config looks for Intel's). `cibuildwheel`'s default repair step
+(`auditwheel`/`delvewheel`) bundles that runtime into the wheel automatically, the same way it
+would bundle e.g. OpenBLAS, so those wheels end up with no separate runtime MKL dependency
+either while still solving with multiple threads.
+
+# Licensing
+
+pydiso's own source code is MIT licensed (see `LICENSE`). Intel oneMKL is not, so what you
+receive depends on how pydiso is installed:
+
+- **Source distribution, conda-forge, or building from source**: only pydiso's code, under
+  MIT. MKL is a separate, dynamically linked runtime dependency (the `mkl` package),
+  installed under Intel's own license - the Intel Simplified Software License (ISSL) on PyPI.
+- **Prebuilt wheels on PyPI**: these statically link MKL and bundle LLVM's OpenMP runtime,
+  so they contain third-party binaries in addition to pydiso's code. Their license is
+  declared as `MIT AND LicenseRef-Intel-ISSL AND Apache-2.0 WITH LLVM-exception`: pydiso's
+  code is MIT, MKL is covered by the Intel Simplified Software License, and the OpenMP
+  runtime by the Apache 2.0 license with LLVM exception. Those licenses, and MKL's
+  third-party notices, are included in each wheel's `.dist-info/licenses/` directory (as
+  their terms require of any redistribution).
+
+The Intel license prohibits reverse engineering, decompiling, disassembling or modifying MKL,
+which the MIT license of pydiso's own code does not override - MIT applies to pydiso only, not
+to the MKL binaries inside the wheels. If those terms don't work for you, install from source
+or conda-forge, where no MKL binaries are redistributed with pydiso.
