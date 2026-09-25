@@ -21,10 +21,10 @@ numpy_nodepr_api = ['-DNPY_NO_DEPRECATED_API=NPY_1_9_API_VERSION']
 # MKL's single dynamic library (mkl_rt), through pkg-config. It picks its
 # threading layer at runtime (MKL_THREADING_LAYER), so there's no threading
 # choice to make here.
-mkl_dep = dependency('mkl-sdl',
-    version: '>=2023.0',
-    required: not get_option('dist_ignore_mkl_dep'),
-)
+mkl_dep = dependency('mkl-sdl', version: '>=2023.0', required: false)
+if not mkl_dep.found() and not get_option('dist_ignore_mkl_dep')
+    error('MKL (>=2023.0) not found through pkg-config. If PKG_CONFIG_PATH is set in your environment (e.g. by actions/setup-python), it overrides the lookup of the .pc files from PyPI mkl-devel: unset it, or add the lib/pkgconfig directory of mkl-devel to it.')
+endif
 
 cython_args = []
 if cy.version().version_compare('>=3.1.0')
