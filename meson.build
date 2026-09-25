@@ -18,6 +18,39 @@ print(get_version())'''
   default_options: [
     'buildtype=debugoptimized',
     'b_ndebug=if-release',
+    # PyPI's mkl-devel drops its .pc files where pkg-config doesn't look.
+    # Ask its installed metadata where they landed rather than assuming a
+    # layout: under pip build isolation mkl-devel goes into an overlay, so
+    # sysconfig's paths point somewhere unrelated. A user's
+    # `-Dpkg_config_path=` still wins, and so does a PKG_CONFIG_PATH already
+    # in the environment (meson ranks it higher than this default); this is
+    # a no-op when mkl-devel isn't pip-installed (e.g. conda-forge).
+    'pkg_config_path=' + run_command('python',
+      [
+        '-c',
+        '''
+import os
+import importlib.metadata as md
+
+pkgconfig_dir = ""
+try:
+    dist = md.distribution("mkl-devel")
+except md.PackageNotFoundError:
+    dist = None
+
+if dist is not None:
+    for f in dist.files or ():
+        if os.path.basename(str(f)) == "mkl-sdl.pc":
+            candidate = os.path.dirname(os.path.normpath(str(dist.locate_file(f))))
+            if os.path.isdir(candidate):
+                pkgconfig_dir = candidate
+            break
+
+print(pkgconfig_dir)
+'''
+      ],
+      check: true
+    ).stdout().strip(),
   ],
 )
 

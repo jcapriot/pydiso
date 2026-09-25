@@ -20,25 +20,11 @@ numpy_nodepr_api = ['-DNPY_NO_DEPRECATED_API=NPY_1_9_API_VERSION']
 
 # MKL's single dynamic library (mkl_rt), through pkg-config. It picks its
 # threading layer at runtime (MKL_THREADING_LAYER), so there's no threading
-# choice to make here. mkl_pkgconfig.py also searches PyPI mkl-devel's .pc
-# files, which pkg-config doesn't find on its own.
-mkl_pkgconfig = meson.project_source_root() / 'tools' / 'mkl_pkgconfig.py'
-mkl_deps = []
-pkg_config = find_program('pkg-config', 'pkgconf', required: false)
-if pkg_config.found()
-    mkl_version = run_command(py, mkl_pkgconfig, pkg_config, '--modversion', check: false)
-    if mkl_version.returncode() == 0 and mkl_version.stdout().strip().version_compare('>=2023.0')
-        mkl_cflags = run_command(py, mkl_pkgconfig, pkg_config, '--cflags', check: true)
-        mkl_libs = run_command(py, mkl_pkgconfig, pkg_config, '--libs', check: true)
-        mkl_deps += declare_dependency(
-            compile_args: mkl_cflags.stdout().strip().split('\n'),
-            link_args: mkl_libs.stdout().strip().split('\n'),
-        )
-    endif
-endif
-if mkl_deps.length() == 0 and not get_option('dist_ignore_mkl_dep')
-    error('MKL (>=2023.0) not found through pkg-config: install mkl-devel and put its mkl-sdl.pc on PKG_CONFIG_PATH.')
-endif
+# choice to make here.
+mkl_dep = dependency('mkl-sdl',
+    version: '>=2023.0',
+    required: not get_option('dist_ignore_mkl_dep'),
+)
 
 cython_args = []
 if cy.version().version_compare('>=3.1.0')
@@ -82,7 +68,7 @@ py.extension_module(
     link_args: rpath_link_args,
     install: true,
     subdir: module_path,
-    dependencies : [py_dep, np_dep] + mkl_deps,
+    dependencies : [py_dep, np_dep, mkl_dep],
     limited_api: '3.12',
 )
 

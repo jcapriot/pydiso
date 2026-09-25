@@ -9,8 +9,8 @@ requires = [
     "numpy>=2.2.0",
     # Prebuilt pkg-config binary (Windows has no system one; it isn't
     # guaranteed elsewhere). >=3.0.7.post0: earlier releases silently
-    # no-op'd when PKG_CONFIG_PATH is set, which tools/mkl_pkgconfig.py
-    # relies on (pypackaging-native/pkgconf-pypi#116).
+    # no-op'd when PKG_CONFIG_PATH is set, which the pkg_config_path default
+    # in meson.build relies on (pypackaging-native/pkgconf-pypi#116).
     "pkgconf>=3.0.7.post0",
     # pkg-config files + headers for MKL, located by meson.build. No upper
     # bound: Intel's last macOS MKL is 2023.2, so macOS resolves that while
@@ -122,6 +122,12 @@ select = ["cp314t-*", "cp315t-*"]
 config-settings = { setup-args = ["-Dvsenv=true", "-Dpython.allow_limited_api=false"] }
 
 [tool.cibuildwheel.linux]
+# The manylinux images preset PKG_CONFIG_PATH, which meson ranks above the
+# default in meson.build that finds PyPI's mkl-devel. Pin the isolated build
+# environment to a known directory so its .pc files can be added explicitly.
+before-build = "rm -rf /tmp/build-env"
+build-frontend = { name = "build", args = ["--env-dir=/tmp/build-env"] }
+environment = { PKG_CONFIG_PATH = "/tmp/build-env/lib/pkgconfig:$PKG_CONFIG_PATH" }
 # MKL comes from the `mkl` dependency at runtime, so it isn't bundled.
 repair-wheel-command = 'auditwheel repair --exclude "libmkl*" -w {dest_dir} {wheel}'
 
